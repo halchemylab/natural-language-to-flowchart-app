@@ -1,2 +1,1 @@
-# nl2flow
-Natural Language to Flowchart
+# natural-language-to-flowchart-app
