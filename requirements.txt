@@ -1,0 +1,10 @@
+streamlit
+openai
+python-dotenv
+pydantic
+jsonschema
+cairosvg
+httpx
+requests
+weasyprint
+pytest

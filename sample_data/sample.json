@@ -1,0 +1,59 @@
+{
+  "nodes": [
+    {
+      "id": "A",
+      "label": "User visits website",
+      "group": "actors",
+      "shape": "box"
+    },
+    {
+      "id": "B",
+      "label": "Enters credentials",
+      "group": "actions",
+      "shape": "box"
+    },
+    {
+      "id": "C",
+      "label": "Credentials valid?",
+      "group": "logic",
+      "shape": "diamond"
+    },
+    {
+      "id": "D",
+      "label": "Redirect to dashboard",
+      "group": "system",
+      "shape": "box"
+    },
+    {
+      "id": "E",
+      "label": "Show error message",
+      "group": "system",
+      "shape": "ellipse"
+    }
+  ],
+  "edges": [
+    {
+      "source": "A",
+      "target": "B",
+      "label": "sees login page"
+    },
+    {
+      "source": "B",
+      "target": "C",
+      "label": "submits"
+    },
+    {
+      "source": "C",
+      "target": "D",
+      "label": "Yes"
+    },
+    {
+      "source": "C",
+      "target": "E",
+      "label": "No"
+    }
+  ],
+  "layout": {
+    "direction": "TB"
+  }
+}

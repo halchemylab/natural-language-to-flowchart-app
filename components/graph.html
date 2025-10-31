@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Graph Component</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: sans-serif;
+        }
+        #mynetwork {
+            width: 100%;
+            height: 100%;
+            border: 1px solid #e0e0e0;
+            box-sizing: border-box;
+        }
+        #toolbar {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 5px;
+            display: flex;
+            gap: 5px;
+        }
+        .toolbar-btn {
+            background: #fff;
+            border: 1px solid #aaa;
+            border-radius: 3px;
+            padding: 5px 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .toolbar-btn:hover {
+            background: #f0f0f0;
+        }
+        /* Dark Theme */
+        body.dark #mynetwork {
+            border-color: #444;
+        }
+        body.dark #toolbar {
+            background: rgba(40, 40, 40, 0.8);
+            border-color: #666;
+        }
+        body.dark .toolbar-btn {
+            background: #333;
+            color: #eee;
+            border-color: #777;
+        }
+        body.dark .toolbar-btn:hover {
+            background: #555;
+        }
+    </style>
+    <!-- 
+        NOTE: The vis-network.min.js and dom-to-image-more.min.js files are missing.
+        You will need to download them and place them in the 'static' directory.
+        - https://unpkg.com/vis-network/standalone/umd/vis-network.min.js
+        - https://cdn.jsdelivr.net/npm/dom-to-image-more@3.1.6/dist/dom-to-image-more.min.js
+    -->
+    <script type="text/javascript" src="static/vis-network.min.js"></script>
+    <script type="text/javascript" src="static/dom-to-image-more.min.js"></script>
+</head>
+<body>
+
+<div id="mynetwork"></div>
+<div id="toolbar">
+    <button class="toolbar-btn" title="Fit graph to view (f)" onclick="fitGraph()">&#10503;</button>
+    <button class="toolbar-btn" id="lock-btn" title="Lock/Unlock physics (l)" onclick="togglePhysics()">&#128275;</button>
+    <button class="toolbar-btn" title="Save layout (s)" onclick="saveLayout()">&#128190;</button>
+    <button class="toolbar-btn" title="Export as PNG" onclick="exportGraph('png')">PNG</button>
+    <button class="toolbar-btn" title="Export as SVG" onclick="exportGraph('svg')">SVG</button>
+    <button class="toolbar-btn" title="Export as PDF" onclick="exportGraph('pdf')">PDF</button>
+</div>
+
+<script type="text/javascript">
+    // --- Streamlit Communication ---
+    const streamlit = Streamlit.Streamlit;
+    let network = null;
+    let allNodes = [];
+    let allEdges = [];
+    let isPhysicsEnabled = true;
+
+    function sendToStreamlit(type, data) {
+        streamlit.setComponentValue({ type, ...data });
+    }
+
+    function onRender(callback) {
+        streamlit.events.addEventListener(streamlit.RENDER_EVENT, callback);
+    }
+
+    // --- Graph Initialization ---
+    function initializeGraph(data) {
+        if (typeof vis === 'undefined' || typeof domtoimage === 'undefined') {
+            const container = document.getElementById('mynetwork');
+            container.innerHTML = '<div style="padding: 20px; color: red;">Error: vis-network.min.js or dom-to-image-more.min.js not loaded. Please add them to the /static folder.</div>';
+            return;
+        }
+
+        const container = document.getElementById('mynetwork');
+        const { graph, layout, config } = data;
+
+        // Apply theme
+        document.body.className = config.theme || 'light';
+        isPhysicsEnabled = config.physics;
+        updateLockButton();
+
+        // Sanitize and map nodes and edges
+        allNodes = new vis.DataSet(graph.nodes.map(n => ({
+            ...n,
+            label: n.label.replace(/</g, "&lt;").replace(/>/g, "&gt;") // Sanitize labels
+        })));
+        allEdges = new vis.DataSet(graph.edges.map(e => ({
+            from: e.source,
+            to: e.target,
+            label: e.label ? e.label.replace(/</g, "&lt;").replace(/>/g, "&gt;") : '',
+            arrows: 'to'
+        })));
+
+        const options = {
+            layout: {
+                hierarchical: {
+                    enabled: true,
+                    direction: config.direction || 'UD', // UD or LR
+                    sortMethod: 'directed',
+                    shakeTowards: 'roots',
+                },
+            },
+            physics: {
+                enabled: isPhysicsEnabled,
+                hierarchicalRepulsion: {
+                    nodeDistance: 150,
+                },
+            },
+            nodes: {
+                font: {
+                    color: config.theme === 'dark' ? '#ffffff' : '#343434',
+                },
+                color: {
+                    border: config.theme === 'dark' ? '#888' : '#2B7CE9',
+                    background: config.theme === 'dark' ? '#444' : '#97C2FC',
+                    highlight: {
+                        border: '#2B7CE9',
+                        background: '#D2E5FF'
+                    }
+                }
+            },
+            edges: {
+                color: {
+                    color: config.theme === 'dark' ? '#ccc' : '#848484',
+                    highlight: '#848484',
+                    inherit: false
+                },
+                font: {
+                    align: 'top'
+                }
+            },
+            interaction: {
+                dragNodes: true,
+                dragView: true,
+                zoomView: true
+            }
+        };
+
+        network = new vis.Network(container, { nodes: allNodes, edges: allEdges }, options);
+
+        // Apply saved layout if available
+        if (layout && Object.keys(layout).length > 0) {
+            network.once('stabilized', () => {
+                network.setOptions({ physics: false });
+                Object.keys(layout).forEach(nodeId => {
+                    if (allNodes.get(nodeId)) {
+                        network.moveNode(nodeId, layout[nodeId].x, layout[nodeId].y);
+                    }
+                });
+                fitGraph();
+            });
+        }
+
+        // --- Event Listeners ---
+        network.on("dragEnd", () => saveLayout());
+        network.on("stabilized", () => {
+            // After initial layout, turn off physics to save CPU, unless user wants it on.
+            if (!config.physics) {
+                network.setOptions({ physics: false });
+            }
+        });
+    }
+
+    // --- Toolbar Functions ---
+    function fitGraph() {
+        if (network) network.fit();
+    }
+
+    function togglePhysics() {
+        isPhysicsEnabled = !isPhysicsEnabled;
+        if (network) {
+            network.setOptions({ physics: { enabled: isPhysicsEnabled } });
+        }
+        updateLockButton();
+    }
+    
+    function updateLockButton() {
+        const lockBtn = document.getElementById('lock-btn');
+        lockBtn.textContent = isPhysicsEnabled ? '&#128275;' : '&#128274;';
+        lockBtn.title = isPhysicsEnabled ? 'Lock physics (l)' : 'Unlock physics (l)';
+    }
+
+    function saveLayout() {
+        if (network) {
+            const positions = network.getPositions();
+            sendToStreamlit("layout_update", { positions });
+            console.log("Layout saved.");
+        }
+    }
+
+    function exportGraph(format) {
+        if (typeof domtoimage === 'undefined') return;
+        const container = document.getElementById('mynetwork');
+        const options = {
+            quality: 1.0,
+            bgcolor: document.body.className === 'dark' ? '#222' : '#fff'
+        };
+
+        const download = (dataUrl, extension) => {
+            const link = document.createElement('a');
+            link.download = `flowchart.${extension}`;
+            link.href = dataUrl;
+            link.click();
+        };
+
+        if (format === 'png') {
+            domtoimage.toPng(container, options).then(dataUrl => download(dataUrl, 'png'));
+        } else if (format === 'svg') {
+            domtoimage.toSvg(container, options).then(dataUrl => download(dataUrl, 'svg'));
+        } else if (format === 'pdf') {
+            // For PDF, we send the SVG data to Streamlit for server-side conversion
+            domtoimage.toSvg(container, options)
+                .then(dataUrl => {
+                    // The dataUrl is base64 encoded, we need to decode it first
+                    const svgString = atob(dataUrl.split(',')[1]);
+                    sendToStreamlit("export_pdf", { svg: svgString });
+                })
+                .catch(error => console.error('oops, something went wrong!', error));
+        }
+    }
+
+    // --- Keyboard Shortcuts ---
+    window.addEventListener('keydown', (event) => {
+        if (event.key === 'f') {
+            event.preventDefault();
+            fitGraph();
+        } else if (event.key === 'l') {
+            event.preventDefault();
+            togglePhysics();
+        } else if (event.key === 's') {
+            event.preventDefault();
+            saveLayout();
+        }
+    });
+
+    // --- Main Logic ---
+    onRender(event => {
+        const data = event.detail.args;
+        if (!data || !data.graph) return;
+
+        // Only re-initialize if the graph data has changed
+        const currentGraphJson = JSON.stringify(network ? {nodes: allNodes.get(), edges: allEdges.get()} : {});
+        const newGraphJson = JSON.stringify(data.graph);
+
+        if (!network || currentGraphJson !== newGraphJson) {
+            initializeGraph(data);
+        } else {
+            // Just update config if graph is the same
+            const { config } = data;
+            document.body.className = config.theme || 'light';
+            isPhysicsEnabled = config.physics;
+            updateLockButton();
+            network.setOptions({
+                physics: { enabled: isPhysicsEnabled },
+                nodes: { font: { color: config.theme === 'dark' ? '#ffffff' : '#343434' } },
+                edges: { color: { color: config.theme === 'dark' ? '#ccc' : '#848484' } }
+            });
+        }
+    });
+
+    // Initial signal to Streamlit that the component is ready
+    streamlit.setFrameHeight();
+    sendToStreamlit("ready", { value: true });
+
+</script>
+</body>
+</html>
