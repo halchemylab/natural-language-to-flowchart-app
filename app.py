@@ -198,7 +198,7 @@ if st.session_state.graph_data:
     )
 
     # Handle data from the component
-    if component_value:
+    if isinstance(component_value, dict):
         if component_value.get("type") == "layout_update":
             st.session_state.graph_layout = component_value.get("positions", {})
 
