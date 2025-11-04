@@ -182,7 +182,7 @@ with col1:
         elif not user_prompt.strip():
             st.warning("Please enter a description.")
         else:
-            with st.spinner("🧠 AI is thinking... This may take a moment."):
+            with st.spinner("✨ Generating graph from your text..."):
                 try:
                     start_time = time.time()
                     graph = generate_graph_from_text(
@@ -200,7 +200,10 @@ with col1:
                 except GraphGenerationError as e:
                     st.session_state.graph_data = None
                     st.session_state.generation_error = str(e)
-                    st.error(f"Failed to generate graph: {e}", icon="🔥")
+                    if "401" in str(e):
+                        st.error("Invalid OpenAI API key. Please check your key in the sidebar.", icon="🔥")
+                    else:
+                        st.error(f"Failed to generate graph: {e}", icon="🔥")
                 except Exception as e:
                     st.session_state.graph_data = None
                     st.session_state.generation_error = f"An unexpected error occurred: {e}"
