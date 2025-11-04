@@ -67,11 +67,11 @@ def get_file_download_link(file_path, file_name, link_text):
     b64 = base64.b64encode(data).decode()
     return f'<a href="data:application/octet-stream;base64,{b64}" download="{file_name}">{link_text}</a>'
 
-def create_graphviz_chart(graph_data):
+def create_graphviz_chart(graph_data, node_shape, node_color, font, layout_algorithm):
     dot = graphviz.Digraph()
-    dot.attr('graph', layout='dot', rankdir='TB', splines='ortho', nodesep='0.8', ranksep='0.8')
-    dot.attr('node', shape='box', style='rounded,filled', fillcolor='#f0f0f0', fontname='Arial', fontsize='12')
-    dot.attr('edge', color='#808080', fontname='Arial', fontsize='10')
+    dot.attr('graph', layout=layout_algorithm, rankdir='TB', splines='ortho', nodesep='0.8', ranksep='0.8')
+    dot.attr('node', shape=node_shape, style='rounded,filled', fillcolor=node_color, fontname=font, fontsize='12')
+    dot.attr('edge', color='#808080', fontname=font, fontsize='10')
 
     node_colors = {
         "process": "#e6f7ff",
@@ -84,7 +84,7 @@ def create_graphviz_chart(graph_data):
     if "nodes" in graph_data:
         for node in graph_data["nodes"]:
             group = node.get("group", "default")
-            color = node_colors.get(group, "#ffffff")
+            color = node_colors.get(group, node_color)
             dot.node(node["id"], node["label"], fillcolor=color)
     if "edges" in graph_data:
         for edge in graph_data["edges"]:
@@ -114,6 +114,13 @@ with st.sidebar:
 
     st.session_state.theme = st.selectbox("Theme", ["light", "dark"], index=0)
     st.session_state.show_physics = st.toggle("Enable Physics", value=True, help="Enable/disable the physics simulation for layout.")
+
+    st.markdown("---")
+    st.header("🎨 Styling Options")
+    st.session_state.node_shape = st.selectbox("Node Shape", ["box", "ellipse", "diamond", "circle"], index=0)
+    st.session_state.node_color = st.color_picker("Node Color", "#f0f0f0")
+    st.session_state.font = st.selectbox("Font", ["Arial", "Helvetica", "Times New Roman"], index=0)
+    st.session_state.layout_algorithm = st.selectbox("Layout Algorithm", ["dot", "neato", "fdp", "sfdp", "twopi", "circo"], index=0)
 
     st.markdown("---")
     st.header("📥 Import")
@@ -214,7 +221,13 @@ with col2:
     if st.session_state.graph_data:
         logging.info(f"Rendering graph with data: {st.session_state.graph_data}")
         # Create a graphviz chart
-        dot = create_graphviz_chart(st.session_state.graph_data)
+        dot = create_graphviz_chart(
+            st.session_state.graph_data,
+            st.session_state.node_shape,
+            st.session_state.node_color,
+            st.session_state.font,
+            st.session_state.layout_algorithm
+        )
         st.graphviz_chart(dot)
 
     elif st.session_state.generation_error:
