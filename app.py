@@ -5,10 +5,15 @@ import os
 from dotenv import load_dotenv
 import time
 import base64
+import logging
+import graphviz
 
 from llm_client import generate_graph_from_text, GraphGenerationError
 from graph_schema import Graph
 from utils.export import svg_to_pdf
+
+# --- Logging Configuration ---
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -61,6 +66,16 @@ def get_file_download_link(file_path, file_name, link_text):
         data = f.read()
     b64 = base64.b64encode(data).decode()
     return f'<a href="data:application/octet-stream;base64,{b64}" download="{file_name}">{link_text}</a>'
+
+def create_graphviz_chart(graph_data):
+    dot = graphviz.Digraph()
+    if "nodes" in graph_data:
+        for node in graph_data["nodes"]:
+            dot.node(node["id"], node["label"])
+    if "edges" in graph_data:
+        for edge in graph_data["edges"]:
+            dot.edge(edge["source"], edge["target"], edge.get("label"))
+    return dot
 
 # --- Sidebar UI ---
 with st.sidebar:
@@ -177,50 +192,17 @@ if st.button("🚀 Generate Draft", type="primary", use_container_width=True):
 
 # --- Display Graph or Error Message ---
 if st.session_state.graph_data:
-    # Prepare data for the HTML component
-    component_data = {
-        "graph": st.session_state.graph_data,
-        "layout": st.session_state.graph_layout,
-        "config": {
-            "theme": st.session_state.theme,
-            "physics": st.session_state.show_physics,
-            "direction": layout_direction,
-        }
-    }
-
-    html_template = load_html_template(GRAPH_HTML_PATH)
-
-    # Render the component and listen for events
-    component_value = components.html(
-        html_template,
-        height=700,
-        scrolling=False,
-    )
-
-    # Handle data from the component
-    if isinstance(component_value, dict):
-        if component_value.get("type") == "layout_update":
-            st.session_state.graph_layout = component_value.get("positions", {})
-
-        elif component_value.get("type") == "export_pdf":
-            svg_data = component_value.get("svg")
-            try:
-                pdf_bytes = svg_to_pdf(svg_data)
-                st.download_button(
-                    label="Download PDF (click me)",
-                    data=pdf_bytes,
-                    file_name="flowchart.pdf",
-                    mime="application/pdf",
-                    key=f"pdf_download_{time.time()}" # Unique key to allow re-download
-                )
-                st.toast("✅ PDF ready for download!", icon="📄")
-            except Exception as e:
-                st.error(f"Failed to create PDF: {e}")
+    logging.info(f"Rendering graph with data: {st.session_state.graph_data}")
+    # Create a graphviz chart
+    dot = create_graphviz_chart(st.session_state.graph_data)
+    st.graphviz_chart(dot)
 
 elif st.session_state.generation_error:
     st.error(f"**Error during generation:**\n\n{st.session_state.generation_error}", icon="🚨")
     if st.button("Retry"):
         st.rerun()
+elif not st.session_state.graph_data:
+    st.warning("Graph data is not available. Please generate a graph first.")
 else:
     st.info("Enter a description above and click 'Generate Draft' to create a flowchart.")
 

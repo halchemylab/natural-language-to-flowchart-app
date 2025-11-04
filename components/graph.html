@@ -80,18 +80,18 @@
 
 <script type="text/javascript">
     // --- Streamlit Communication ---
-    const streamlit = Streamlit.Streamlit;
+    const Streamlit = window.parent.Streamlit;
     let network = null;
     let allNodes = [];
     let allEdges = [];
     let isPhysicsEnabled = true;
 
     function sendToStreamlit(type, data) {
-        streamlit.setComponentValue({ type, ...data });
+        Streamlit.setComponentValue({ type, ...data });
     }
 
     function onRender(callback) {
-        streamlit.events.addEventListener(streamlit.RENDER_EVENT, callback);
+        Streamlit.events.addEventListener(Streamlit.RENDER_EVENT, callback);
     }
 
     // --- Graph Initialization ---
@@ -290,7 +290,7 @@
     });
 
     // Initial signal to Streamlit that the component is ready
-    streamlit.setFrameHeight();
+    Streamlit.setFrameHeight();
     sendToStreamlit("ready", { value: true });
 
 </script>
