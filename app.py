@@ -69,9 +69,23 @@ def get_file_download_link(file_path, file_name, link_text):
 
 def create_graphviz_chart(graph_data):
     dot = graphviz.Digraph()
+    dot.attr('graph', layout='dot', rankdir='TB', splines='ortho', nodesep='0.8', ranksep='0.8')
+    dot.attr('node', shape='box', style='rounded,filled', fillcolor='#f0f0f0', fontname='Arial', fontsize='12')
+    dot.attr('edge', color='#808080', fontname='Arial', fontsize='10')
+
+    node_colors = {
+        "process": "#e6f7ff",
+        "decision": "#fffbe6",
+        "interface": "#f6ffed",
+        "user": "#e6e6ff",
+        "system": "#f0f0f0",
+    }
+
     if "nodes" in graph_data:
         for node in graph_data["nodes"]:
-            dot.node(node["id"], node["label"])
+            group = node.get("group", "default")
+            color = node_colors.get(group, "#ffffff")
+            dot.node(node["id"], node["label"], fillcolor=color)
     if "edges" in graph_data:
         for edge in graph_data["edges"]:
             dot.edge(edge["source"], edge["target"], edge.get("label"))
