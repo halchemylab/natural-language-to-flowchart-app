@@ -18,19 +18,28 @@ def save_metrics(metrics):
         json.dump(metrics, f)
 
 def display_metrics():
+    # Custom CSS to style the metric containers
+    st.markdown("""
+    <style>
+        div[data-testid="stMetric"] {
+            background-color: #FFFFFF;
+            border: 1px solid #E0E0E0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
     metrics = load_metrics()
     run_count = metrics.get("run_count", 0)
     time_saved = run_count * 30
     money_saved = run_count * 25
 
     st.header("📊 ROI Metrics")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric(label="Usage", value=run_count)
-    with col2:
-        st.metric(label="Time Saved (min)", value=f"{time_saved}")
-    with col3:
-        st.metric(label="Money Saved ($)", value=f"{money_saved}")
+    st.metric(label="Usage", value=f"{run_count} times")
+    st.metric(label="Time Saved", value=f"{time_saved} mins")
+    st.metric(label="Money Saved", value=f"${money_saved}")
 
 def render_sidebar():
     with st.sidebar:
