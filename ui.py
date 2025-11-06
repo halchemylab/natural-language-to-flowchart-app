@@ -6,8 +6,35 @@ import graphviz
 import time
 from llm_client import generate_graph_from_text, GraphGenerationError
 
+def load_metrics():
+    try:
+        with open("metrics.json", "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {"run_count": 0}
+
+def save_metrics(metrics):
+    with open("metrics.json", "w") as f:
+        json.dump(metrics, f)
+
+def display_metrics():
+    metrics = load_metrics()
+    run_count = metrics.get("run_count", 0)
+    time_saved = run_count * 30
+    money_saved = run_count * 25
+
+    st.header("📊 ROI Metrics")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric(label="Usage", value=run_count)
+    with col2:
+        st.metric(label="Time Saved (min)", value=f"{time_saved}")
+    with col3:
+        st.metric(label="Money Saved ($)", value=f"{money_saved}")
+
 def render_sidebar():
     with st.sidebar:
+        display_metrics()
         st.header("⚙️ Configuration")
 
         st.session_state.api_key = st.text_input(
@@ -116,7 +143,13 @@ def render_main_panel(DEFAULT_PROMPT, model, temperature):
                         st.session_state.graph_data = graph.model_dump()
                         st.session_state.last_generated_text = user_prompt
                         st.session_state.generation_error = None
-                        st.session_state.graph_.layout = {} # Reset layout on new generation
+                        st.session_state.graph_layout = {} # Reset layout on new generation
+
+                        metrics = load_metrics()
+                        metrics["run_count"] = metrics.get("run_count", 0) + 1
+                        save_metrics(metrics)
+                        st.rerun()
+                        
                         end_time = time.time()
                         st.toast(f"✅ Graph generated in {end_time - start_time:.2f}s!", icon="🎉")
                     except GraphGenerationError as e:
