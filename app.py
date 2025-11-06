@@ -48,5 +48,5 @@ render_main_panel(DEFAULT_PROMPT, model, temperature)
 # --- Footer ---
 st.markdown("---")
 st.markdown(
-    "Made with ❤️ by an AI assistant. "
+    "Made with 🧠 by a human and an AI assistant. "
 )
