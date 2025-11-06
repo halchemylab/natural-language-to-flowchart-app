@@ -32,8 +32,6 @@ def init_session_state():
         "graph_data": None,
         "graph_layout": {},
         "last_generated_text": "",
-        "theme": "light",
-        "show_physics": True,
         "generation_error": None,
         "api_key": os.getenv("OPENAI_API_KEY") or "",
         "DEFAULT_PROMPT": DEFAULT_PROMPT
@@ -45,9 +43,8 @@ def init_session_state():
 init_session_state()
 
 # --- Render UI ---
-model, temperature, layout_direction = render_sidebar()
+model, temperature = render_sidebar()
 render_main_panel(DEFAULT_PROMPT, model, temperature)
-
 # --- Footer ---
 st.markdown("---")
 st.markdown(

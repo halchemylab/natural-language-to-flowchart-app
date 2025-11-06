@@ -61,11 +61,6 @@ def render_sidebar():
             help="Lower values make the output more deterministic."
         )
 
-        layout_direction = st.selectbox("Layout Direction", ["TB", "LR"], index=0, help="Top-to-Bottom or Left-to-Right.")
-
-        st.session_state.theme = st.selectbox("Theme", ["light", "dark"], index=0)
-        st.session_state.show_physics = st.toggle("Enable Physics", value=True, help="Enable/disable the physics simulation for layout.")
-
         st.markdown("---")
         st.header("🎨 Styling Options")
         st.session_state.node_shape = st.selectbox("Node Shape", ["box", "ellipse", "diamond", "circle"], index=0)
@@ -118,7 +113,7 @@ def render_sidebar():
                 """,
                 unsafe_allow_html=True
             )
-    return model, temperature, layout_direction
+    return model, temperature
 
 def render_main_panel(DEFAULT_PROMPT, model, temperature):
     st.title("✨ Natural Language to Flowchart")
