@@ -24,6 +24,7 @@ def generate_graph_from_text(
     model: str = DEFAULT_MODEL,
     temperature: float = DEFAULT_TEMPERATURE,
     max_retries: int = MAX_RETRIES,
+    status_callback: callable = None,
 ) -> Graph:
     """
     Generates a graph from natural language text using an LLM, with validation and retries.
@@ -34,6 +35,7 @@ def generate_graph_from_text(
         model: The model to use.
         temperature: The generation temperature.
         max_retries: The maximum number of times to retry on validation failure.
+        status_callback: A function to call with status updates.
 
     Returns:
         A validated Graph object.
@@ -44,8 +46,14 @@ def generate_graph_from_text(
     client = OpenAI(api_key=api_key)
     prompt = MAIN_PROMPT_TEMPLATE.format(user_text=text)
     
+    def update_status(message):
+        if status_callback:
+            status_callback(message)
+
     for attempt in range(max_retries + 1):
         logging.info(f"Generation attempt {attempt + 1}...")
+        update_status(f"🧠 Attempt {attempt + 1}: Contacting LLM...")
+        
         try:
             start_time = time.time()
             
@@ -64,12 +72,14 @@ def generate_graph_from_text(
             token_usage = response.usage
             
             logging.info(f"LLM call successful. Time: {end_time - start_time:.2f}s, Tokens: {token_usage.total_tokens}")
-            
+            update_status("✅ LLM response received. Parsing and validating...")
+
             # 1. Parse the JSON
             try:
                 json_data = json.loads(raw_response_text)
             except json.JSONDecodeError as e:
                 logging.warning(f"Attempt {attempt + 1}: Failed to parse JSON. Error: {e}")
+                update_status(f"⚠️ Attempt {attempt + 1}: Invalid JSON received. Retrying...")
                 prompt = REPAIR_PROMPT_TEMPLATE.format(
                     user_text=text,
                     invalid_json=raw_response_text,
@@ -79,11 +89,14 @@ def generate_graph_from_text(
 
             # 2. Validate with Pydantic
             try:
+                update_status("🔍 Validating graph schema...")
                 graph = Graph.model_validate(json_data)
                 logging.info("Graph validation successful.")
+                update_status("✅ Graph validation successful!")
                 return graph
             except ValidationError as e:
                 logging.warning(f"Attempt {attempt + 1}: Graph validation failed. Errors: {e.errors()}")
+                update_status(f"⚠️ Attempt {attempt + 1}: Schema validation failed. Retrying...")
                 prompt = REPAIR_PROMPT_TEMPLATE.format(
                     user_text=text,
                     invalid_json=json.dumps(json_data, indent=2),
@@ -93,6 +106,7 @@ def generate_graph_from_text(
 
         except (RateLimitError, APIError) as e:
             logging.error(f"API Error on attempt {attempt + 1}: {e}")
+            update_status(f"🔥 API Error. Retrying in a moment...")
             if attempt < max_retries:
                 time.sleep(2 ** attempt) # Exponential backoff
             else:

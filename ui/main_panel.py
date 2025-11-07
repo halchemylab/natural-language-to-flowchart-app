@@ -19,20 +19,28 @@ def render_main_panel(model, temperature):
             key="user_prompt_input"
         )
 
+        status_placeholder = st.empty()
+
         if st.button("🚀 Generate Draft", type="primary", use_container_width=True):
             if not st.session_state.api_key:
                 st.error("Please enter your OpenAI API key in the sidebar.")
             elif not user_prompt.strip():
                 st.warning("Please enter a description.")
             else:
-                with st.spinner("✨ Generating graph from your text..."):
-                    try:
+                try:
+                    with st.spinner("✨ Kicking off the magic..."):
+                        status_placeholder.info("✨ Kicking off the magic...", icon="⏳")
+                        
+                        def status_callback(message):
+                            status_placeholder.info(message, icon="⏳")
+
                         start_time = time.time()
                         graph = generate_graph_from_text(
                             api_key=st.session_state.api_key,
                             text=user_prompt,
                             model=model,
                             temperature=temperature,
+                            status_callback=status_callback,
                         )
                         st.session_state.graph_data = graph.model_dump()
                         st.session_state.last_generated_text = user_prompt
@@ -42,25 +50,29 @@ def render_main_panel(model, temperature):
                         metrics = load_metrics()
                         metrics["run_count"] = metrics.get("run_count", 0) + 1
                         save_metrics(metrics)
-                        st.rerun()
                         
                         end_time = time.time()
-                        st.toast(f"✅ Graph generated in {end_time - start_time:.2f}s!", icon="🎉")
-                    except GraphGenerationError as e:
-                        st.session_state.graph_data = None
-                        st.session_state.generation_error = str(e)
-                        if "401" in str(e):
-                            st.error("Invalid OpenAI API key. Please check your key in the sidebar.", icon="🔥")
-                        else:
-                            st.error(f"Failed to generate graph: {e}", icon="🔥")
-                    except Exception as e:
-                        st.session_state.graph_data = None
-                        st.session_state.generation_error = f"An unexpected error occurred: {e}"
-                        st.error(f"An unexpected error occurred: {e}", icon="🔥")
+                        status_placeholder.success(f"✅ Graph generated in {end_time - start_time:.2f}s!", icon="🎉")
+                        st.rerun()
+
+                except GraphGenerationError as e:
+                    st.session_state.graph_data = None
+                    st.session_state.generation_error = str(e)
+                    status_placeholder.empty()
+                    if "401" in str(e):
+                        st.error("Invalid OpenAI API key. Please check your key in the sidebar.", icon="🔥")
+                    else:
+                        st.error(f"Failed to generate graph: {e}", icon="🔥")
+                except Exception as e:
+                    st.session_state.graph_data = None
+                    st.session_state.generation_error = f"An unexpected error occurred: {e}"
+                    status_placeholder.empty()
+                    st.error(f"An unexpected error occurred: {e}", icon="🔥")
     
     with col2:
         if st.session_state.graph_data:
             logging.info(f"Rendering graph with data: {st.session_state.graph_data}")
+            status_placeholder.info("🎨 Rendering graph...", icon="🖌️")
             # Create a graphviz chart
             dot = create_graphviz_chart(
                 st.session_state.graph_data,
@@ -70,6 +82,7 @@ def render_main_panel(model, temperature):
                 st.session_state.layout_algorithm
             )
             st.graphviz_chart(dot)
+            status_placeholder.empty()
 
         elif st.session_state.generation_error:
             st.error(f"**Error during generation:**\n\n{st.session_state.generation_error}", icon="🚨")
