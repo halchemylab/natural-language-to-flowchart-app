@@ -7,6 +7,7 @@ import time
 
 from graph_schema import Graph
 from prompts import MAIN_PROMPT_TEMPLATE, REPAIR_PROMPT_TEMPLATE
+from config import DEFAULT_MODEL, DEFAULT_TEMPERATURE, MAX_RETRIES
 
 # --- Configuration ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -20,9 +21,9 @@ class GraphGenerationError(Exception):
 def generate_graph_from_text(
     api_key: str,
     text: str,
-    model: str = "gpt-5-mini",
-    temperature: float = 0.2,
-    max_retries: int = 2,
+    model: str = DEFAULT_MODEL,
+    temperature: float = DEFAULT_TEMPERATURE,
+    max_retries: int = MAX_RETRIES,
 ) -> Graph:
     """
     Generates a graph from natural language text using an LLM, with validation and retries.
@@ -30,7 +31,7 @@ def generate_graph_from_text(
     Args:
         api_key: The OpenAI API key.
         text: The user's natural language input.
-        model: The model to use (e.g., 'gpt-5-mini').
+        model: The model to use.
         temperature: The generation temperature.
         max_retries: The maximum number of times to retry on validation failure.
 
