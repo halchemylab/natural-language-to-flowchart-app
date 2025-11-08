@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field, validator, conlist
+from pydantic import BaseModel, Field, field_validator, model_validator, conlist
 from typing import Literal, List
+import logging
 
 # --- Constants ---
 ALLOWED_SHAPES = ["box", "ellipse", "diamond", "circle"]
@@ -14,12 +15,10 @@ class Node(BaseModel):
     group: str = Field(default="default", description="A group name for styling or filtering.")
     shape: Literal[*ALLOWED_SHAPES] = Field(default="box", description="The shape of the node.")
 
-    @validator('label')
+    @field_validator('label')
     def label_word_count(cls, v):
-        if len(v.split()) > 10: # A soft warning, but let's be more lenient than 6
-            # In a real app, you might log this instead of raising an error
-            # For now, we'll allow it but it's good practice to check
-            pass
+        if len(v.split()) > 10:
+            logging.warning(f"Node label '{v}' is long ({len(v.split())} words). Consider shortening it.")
         return v
 
 class Edge(BaseModel):
@@ -38,17 +37,13 @@ class Graph(BaseModel):
     edges: List[Edge] = Field(default=[], description="A list of all edges connecting the nodes.")
     layout: Layout = Field(default_factory=Layout, description="Graph layout configuration.")
 
-    @validator('edges')
-    def check_edge_node_ids_exist(cls, edges, values):
+    @model_validator(mode='after')
+    def check_edge_node_ids_exist(self) -> 'Graph':
         """Ensures that every edge connects to valid nodes."""
-        if 'nodes' not in values:
-            # This can happen if nodes validation fails first
-            return edges
-            
-        node_ids = {node.id for node in values['nodes']}
-        for edge in edges:
+        node_ids = {node.id for node in self.nodes}
+        for edge in self.edges:
             if edge.source not in node_ids:
                 raise ValueError(f"Edge source '{edge.source}' does not match any node ID.")
             if edge.target not in node_ids:
                 raise ValueError(f"Edge target '{edge.target}' does not match any node ID.")
-        return edges
+        return self
