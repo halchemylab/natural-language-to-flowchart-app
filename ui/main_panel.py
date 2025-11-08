@@ -21,7 +21,8 @@ def render_main_panel(model, temperature):
 
         status_placeholder = st.empty()
 
-        if st.button("🚀 Generate Draft", type="primary", use_container_width=True):
+        button_col1, button_col2 = st.columns(2)
+        if button_col1.button("🚀 Generate Draft", type="primary", use_container_width=True):
             if not st.session_state.api_key:
                 st.error("Please enter your OpenAI API key in the sidebar.")
             elif not user_prompt.strip():
@@ -68,7 +69,14 @@ def render_main_panel(model, temperature):
                     st.session_state.generation_error = f"An unexpected error occurred: {e}"
                     status_placeholder.empty()
                     st.error(f"An unexpected error occurred: {e}", icon="🔥")
-    
+        
+        if button_col2.button("🧹 Clear", use_container_width=True):
+            st.session_state.graph_data = None
+            st.session_state.graph_layout = {}
+            st.session_state.generation_error = None
+            st.session_state.last_generated_text = ""
+            st.rerun()
+
     with col2:
         if st.session_state.graph_data:
             logging.info(f"Rendering graph with data: {st.session_state.graph_data}")
