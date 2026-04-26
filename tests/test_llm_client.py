@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from openai import RateLimitError, APIError
+from openai import APIError, AuthenticationError, RateLimitError
 from pydantic import ValidationError
 import json
 
@@ -112,6 +112,38 @@ def test_generate_graph_from_text_api_error(mock_openai_client):
         generate_graph_from_text("test_api_key", "test prompt", max_retries=1)
 
     assert mock_client.chat.completions.create.call_count == 2
+
+def test_generate_graph_from_text_authentication_error(mock_openai_client):
+    # Arrange
+    mock_client = MagicMock()
+    mock_openai_client.return_value = mock_client
+    mock_response = MagicMock()
+    mock_response.status_code = 401
+    mock_client.chat.completions.create.side_effect = AuthenticationError(
+        "Invalid API key",
+        response=mock_response,
+        body=None,
+    )
+
+    # Act & Assert
+    with pytest.raises(GraphGenerationError, match="Invalid OpenAI API key"):
+        generate_graph_from_text("test_api_key", "test prompt")
+
+    assert mock_client.chat.completions.create.call_count == 1
+
+def test_generate_graph_from_text_empty_response(mock_openai_client):
+    # Arrange
+    mock_client = MagicMock()
+    mock_openai_client.return_value = mock_client
+    mock_response = MagicMock()
+    mock_response.choices = []
+    mock_client.chat.completions.create.return_value = mock_response
+
+    # Act & Assert
+    with pytest.raises(GraphGenerationError, match="no response choices"):
+        generate_graph_from_text("test_api_key", "test prompt")
+
+    assert mock_client.chat.completions.create.call_count == 1
 
 def test_generate_graph_from_text_fails_after_max_retries(mock_openai_client):
     # Arrange

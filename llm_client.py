@@ -1,7 +1,15 @@
-import os
 import json
 import logging
-from openai import OpenAI, RateLimitError, APIError
+from collections.abc import Callable
+
+from openai import (
+    APIConnectionError,
+    APIError,
+    APITimeoutError,
+    AuthenticationError,
+    OpenAI,
+    RateLimitError,
+)
 from pydantic import ValidationError
 import time
 
@@ -17,6 +25,22 @@ class GraphGenerationError(Exception):
     """Custom exception for errors during graph generation."""
     pass
 
+def _extract_response_text(response) -> str:
+    """Return the first response message, or raise a user-facing generation error."""
+    choices = getattr(response, "choices", None) or []
+    if not choices:
+        raise GraphGenerationError("The model returned no response choices.")
+
+    message = getattr(choices[0], "message", None)
+    content = getattr(message, "content", None)
+    if not content or not content.strip():
+        raise GraphGenerationError("The model returned an empty response.")
+    return content
+
+def _total_tokens(response) -> int | None:
+    usage = getattr(response, "usage", None)
+    return getattr(usage, "total_tokens", None)
+
 # --- Main Client Function ---
 def generate_graph_from_text(
     api_key: str,
@@ -24,7 +48,7 @@ def generate_graph_from_text(
     model: str = DEFAULT_MODEL,
     temperature: float = DEFAULT_TEMPERATURE,
     max_retries: int = MAX_RETRIES,
-    status_callback: callable = None,
+    status_callback: Callable[[str], None] | None = None,
 ) -> Graph:
     """
     Generates a graph from natural language text using an LLM, with validation and retries.
@@ -46,7 +70,7 @@ def generate_graph_from_text(
     client = OpenAI(api_key=api_key)
     prompt = MAIN_PROMPT_TEMPLATE.format(user_text=text)
     
-    def update_status(message):
+    def update_status(message: str) -> None:
         if status_callback:
             status_callback(message)
 
@@ -68,10 +92,14 @@ def generate_graph_from_text(
             
             end_time = time.time()
             
-            raw_response_text = response.choices[0].message.content
-            token_usage = response.usage
+            raw_response_text = _extract_response_text(response)
+            total_tokens = _total_tokens(response)
             
-            logging.info(f"LLM call successful. Time: {end_time - start_time:.2f}s, Tokens: {token_usage.total_tokens}")
+            logging.info(
+                "LLM call successful. Time: %.2fs, Tokens: %s",
+                end_time - start_time,
+                total_tokens if total_tokens is not None else "unknown",
+            )
             update_status("✅ LLM response received. Parsing and validating...")
 
             # 1. Parse the JSON
@@ -104,9 +132,12 @@ def generate_graph_from_text(
                 )
                 continue
 
-        except (RateLimitError, APIError) as e:
+        except AuthenticationError as e:
+            logging.error("Authentication failed: %s", e)
+            raise GraphGenerationError("Invalid OpenAI API key. Please check your key and try again.") from e
+        except (RateLimitError, APITimeoutError, APIConnectionError, APIError) as e:
             logging.error(f"API Error on attempt {attempt + 1}: {e}")
-            update_status(f"🔥 API Error. Retrying in a moment...")
+            update_status("🔥 API error. Retrying in a moment...")
             if attempt < max_retries:
                 time.sleep(2 ** attempt) # Exponential backoff
             else:
