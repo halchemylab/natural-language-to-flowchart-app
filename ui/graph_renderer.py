@@ -2,7 +2,12 @@ import graphviz
 
 def create_graphviz_chart(graph_data, node_shape, node_color, font, layout_algorithm):
     dot = graphviz.Digraph()
-    dot.attr('graph', layout=layout_algorithm, rankdir='TB', splines='ortho', nodesep='0.8', ranksep='0.8')
+    layout = graph_data.get("layout", {})
+    rankdir = layout.get("direction", "TB")
+    if rankdir not in {"TB", "LR"}:
+        rankdir = "TB"
+
+    dot.attr('graph', layout=layout_algorithm, rankdir=rankdir, splines='ortho', nodesep='0.8', ranksep='0.8')
     dot.attr('node', shape=node_shape, style='rounded,filled', fillcolor=node_color, fontname=font, fontsize='12')
     dot.attr('edge', color='#808080', fontname=font, fontsize='10')
 

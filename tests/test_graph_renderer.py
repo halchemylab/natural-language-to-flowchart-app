@@ -37,3 +37,17 @@ def test_create_graphviz_chart_nodes_and_edges(sample_graph_data):
     # Check for edge definitions
     assert 'node1 -> node2 [label="Edge 1"]' in chart_source
     assert 'node2 -> node3' in chart_source
+
+def test_create_graphviz_chart_uses_graph_layout_direction(sample_graph_data):
+    sample_graph_data["layout"] = {"direction": "LR"}
+
+    chart = create_graphviz_chart(sample_graph_data, "box", "#f0f0f0", "Arial", "dot")
+
+    assert "rankdir=LR" in chart.source
+
+def test_create_graphviz_chart_defaults_invalid_layout_direction(sample_graph_data):
+    sample_graph_data["layout"] = {"direction": "SIDEWAYS"}
+
+    chart = create_graphviz_chart(sample_graph_data, "box", "#f0f0f0", "Arial", "dot")
+
+    assert "rankdir=TB" in chart.source
