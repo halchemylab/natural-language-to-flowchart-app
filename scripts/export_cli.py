@@ -1,4 +1,5 @@
 import argparse
+import html
 import json
 import os
 from graph_schema import Graph
@@ -23,8 +24,9 @@ def render_graph_to_svg(graph: Graph) -> str:
     x, y, col_count = 50, 50, 4
     for i, node in enumerate(graph.nodes):
         positions[node.id] = (x, y)
+        label = html.escape(node.label)
         elements.append(f'<rect x="{x-40}" y="{y-20}" width="80" height="40" rx="5" class="node" />')
-        elements.append(f'<text x="{x}" y="{y+5}" class="label">{node.label}</text>')
+        elements.append(f'<text x="{x}" y="{y+5}" class="label">{label}</text>')
         x += 150
         if (i + 1) % col_count == 0:
             x = 50

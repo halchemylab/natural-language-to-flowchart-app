@@ -66,6 +66,12 @@ def test_edge_with_nonexistent_node_fails(valid_graph_data):
     with pytest.raises(ValueError, match="does not match any node ID"):
         Graph.model_validate(valid_graph_data)
 
+def test_duplicate_node_ids_fail(valid_graph_data):
+    """Tests that repeated node IDs are rejected before rendering."""
+    valid_graph_data["nodes"].append({"id": "A", "label": "Duplicate"})
+    with pytest.raises(ValueError, match="Duplicate node ID"):
+        Graph.model_validate(valid_graph_data)
+
 
 def test_default_values_are_applied():
     """Checks that default values are correctly applied to nodes and layout."""

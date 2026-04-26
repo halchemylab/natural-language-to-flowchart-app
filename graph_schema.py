@@ -40,7 +40,17 @@ class Graph(BaseModel):
     @model_validator(mode='after')
     def check_edge_node_ids_exist(self) -> 'Graph':
         """Ensures that every edge connects to valid nodes."""
-        node_ids = {node.id for node in self.nodes}
+        node_ids = set()
+        duplicate_ids = set()
+        for node in self.nodes:
+            if node.id in node_ids:
+                duplicate_ids.add(node.id)
+            node_ids.add(node.id)
+
+        if duplicate_ids:
+            formatted_ids = ", ".join(sorted(duplicate_ids))
+            raise ValueError(f"Duplicate node ID(s): {formatted_ids}")
+
         for edge in self.edges:
             if edge.source not in node_ids:
                 raise ValueError(f"Edge source '{edge.source}' does not match any node ID.")
