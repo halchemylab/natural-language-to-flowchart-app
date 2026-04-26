@@ -13,7 +13,14 @@ from config import (
     LAYOUT_ALGORITHM_OPTIONS,
     DEFAULT_LAYOUT_ALGORITHM,
 )
+from .graph_renderer import render_graph_export
 from .metrics import load_metrics
+
+EXPORT_MIME_TYPES = {
+    "svg": "image/svg+xml",
+    "png": "image/png",
+    "pdf": "application/pdf",
+}
 
 def display_metrics():
     # Custom CSS to style the metric containers
@@ -103,11 +110,25 @@ def render_sidebar():
                     mime="application/json",
                 )
 
-            st.markdown('<div id="export-buttons"></div>', unsafe_allow_html=True)
-            st.markdown(
-                """
-                <small>PNG/SVG exports are generated client-side. PDF is generated on the server.</small>
-                """,
-                unsafe_allow_html=True
-            )
+            try:
+                for export_format, label in [
+                    ("svg", "Save SVG"),
+                    ("png", "Save PNG"),
+                    ("pdf", "Save PDF"),
+                ]:
+                    st.download_button(
+                        label=label,
+                        data=render_graph_export(
+                            st.session_state.graph_data,
+                            st.session_state.node_shape,
+                            st.session_state.node_color,
+                            st.session_state.font,
+                            st.session_state.layout_algorithm,
+                            export_format,
+                        ),
+                        file_name=f"flowchart.{export_format}",
+                        mime=EXPORT_MIME_TYPES[export_format],
+                    )
+            except Exception as e:
+                st.error(f"Could not render export files: {e}")
     return model, temperature

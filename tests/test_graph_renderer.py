@@ -1,6 +1,6 @@
 import pytest
 from graphviz import Digraph
-from ui.graph_renderer import create_graphviz_chart
+from ui.graph_renderer import create_graphviz_chart, render_graph_export
 
 @pytest.fixture
 def sample_graph_data():
@@ -51,3 +51,7 @@ def test_create_graphviz_chart_defaults_invalid_layout_direction(sample_graph_da
     chart = create_graphviz_chart(sample_graph_data, "box", "#f0f0f0", "Arial", "dot")
 
     assert "rankdir=TB" in chart.source
+
+def test_render_graph_export_rejects_unsupported_format(sample_graph_data):
+    with pytest.raises(ValueError, match="Unsupported export format"):
+        render_graph_export(sample_graph_data, "box", "#f0f0f0", "Arial", "dot", "jpg")

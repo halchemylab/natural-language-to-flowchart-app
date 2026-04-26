@@ -1,5 +1,7 @@
 import graphviz
 
+EXPORT_FORMATS = {"svg", "png", "pdf"}
+
 def create_graphviz_chart(graph_data, node_shape, node_color, font, layout_algorithm):
     dot = graphviz.Digraph()
     layout = graph_data.get("layout", {})
@@ -28,3 +30,10 @@ def create_graphviz_chart(graph_data, node_shape, node_color, font, layout_algor
         for edge in graph_data["edges"]:
             dot.edge(edge["source"], edge["target"], edge.get("label"))
     return dot
+
+def render_graph_export(graph_data, node_shape, node_color, font, layout_algorithm, output_format):
+    if output_format not in EXPORT_FORMATS:
+        raise ValueError(f"Unsupported export format: {output_format}")
+
+    chart = create_graphviz_chart(graph_data, node_shape, node_color, font, layout_algorithm)
+    return chart.pipe(format=output_format)
