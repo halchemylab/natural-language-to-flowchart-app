@@ -1,21 +1,19 @@
 # Natural Language to Flowchart App
 
-This Streamlit application transforms natural-language descriptions of processes into beautiful, editable flowcharts. It uses an AI model (OpenAI's GPT series) to generate a graph structure, which is then rendered in an interactive drag-and-drop editor.
+This Streamlit application transforms natural-language descriptions of processes into flowcharts. It uses an AI model to generate a validated graph structure, then renders the result with Graphviz inside Streamlit.
 
 ## Features
 
 -   **AI-Powered Graph Generation**: Describe a process in plain English, and the app generates a flowchart diagram.
--   **Interactive Editor**: Freely drag, pan, and zoom the diagram to get the perfect layout.
--   **Editable Nodes & Edges**: (Future goal) Click to edit labels, shapes, and connections.
--   **Multiple Export Options**: Export your finished diagram to PNG, SVG, or PDF.
--   **Layout Persistence**: Save your custom node positions and reload them later.
--   **Offline First**: Renders graphs even without an internet connection (after initial setup). All libraries are bundled.
--   **Configurable**: Adjust the AI model, temperature, layout direction, and theme.
+-   **Graphviz Rendering**: Render validated graphs as clean directed flowcharts.
+-   **Import & Export**: Load graph JSON and export the graph as JSON, SVG, PNG, or PDF.
+-   **Configurable**: Adjust the AI model, temperature, layout algorithm, node shape, color, and font.
+-   **Repair Retries**: Retry malformed model responses with a repair prompt before surfacing an error.
 
 ## Tech Stack
 
 -   **Backend**: Python 3.11+, Streamlit, OpenAI API
--   **Frontend**: `vis-network` for graph rendering, `dom-to-image-more` for client-side exports.
+-   **Rendering**: Graphviz for flowchart rendering.
 -   **Validation**: Pydantic for robust JSON schema validation.
 -   **Export**: CairoSVG for server-side SVG to PDF conversion.
 
@@ -69,13 +67,11 @@ The application will open in your web browser at `http://localhost:8501`.
 1.  **Enter Your API Key**: If you haven't set it in your `.env` file, you can enter your OpenAI API key in the sidebar.
 2.  **Write a Description**: In the main text area, describe the process you want to visualize. An example is pre-filled for you.
 3.  **Generate Draft**: Click the "Generate draft" button. The app will call the OpenAI API, validate the response, and render the initial flowchart.
-4.  **Customize Layout**:
-    -   Drag nodes to rearrange them.
-    -   Use the toolbar to fit the diagram to the screen, or lock/unlock the physics simulation.
-    -   Pan and zoom using your mouse/trackpad.
+4.  **Customize Rendering**:
+    -   Use the sidebar to adjust node shape, color, font, and the Graphviz layout algorithm.
 5.  **Save & Export**:
     -   Use the sidebar buttons to export the diagram as a PNG, SVG, or PDF.
-    -   Save the generated `graph.json` (the raw nodes and edges) or the `layout.json` (your custom node positions) for later use.
+    -   Save the generated `graph.json` for later use.
 
 ## Project Structure
 
@@ -88,11 +84,7 @@ The application will open in your web browser at `http://localhost:8501`.
 ├── requirements.txt          # Python dependencies
 ├── .env.example              # Environment variable template
 ├── README.md                 # This file
-├── components/
-│   └── graph.html            # HTML/JS for the interactive graph component
-├── static/
-│   ├── dom-to-image-more.min.js # JS library for client-side export
-│   └── vis-network.min.js    # JS library for graph rendering
+├── static/                   # Bundled static assets from earlier UI experiments
 ├── utils/
 │   └── export.py             # Server-side export utilities (e.g., SVG to PDF)
 ├── sample_data/
