@@ -1,13 +1,20 @@
 import graphviz
 
+from graph_schema import Graph
+
 EXPORT_FORMATS = {"svg", "png", "pdf"}
 
+
+def _coerce_graph(graph_data) -> Graph:
+    if isinstance(graph_data, Graph):
+        return graph_data
+    return Graph.model_validate(graph_data)
+
+
 def create_graphviz_chart(graph_data, node_shape, node_color, font, layout_algorithm):
+    graph = _coerce_graph(graph_data)
     dot = graphviz.Digraph()
-    layout = graph_data.get("layout", {})
-    rankdir = layout.get("direction", "TB")
-    if rankdir not in {"TB", "LR"}:
-        rankdir = "TB"
+    rankdir = graph.layout.direction
 
     dot.attr('graph', layout=layout_algorithm, rankdir=rankdir, splines='ortho', nodesep='0.8', ranksep='0.8')
     dot.attr('node', shape=node_shape, style='rounded,filled', fillcolor=node_color, fontname=font, fontsize='12')
@@ -21,14 +28,12 @@ def create_graphviz_chart(graph_data, node_shape, node_color, font, layout_algor
         "system": "#f0f0f0",
     }
 
-    if "nodes" in graph_data:
-        for node in graph_data["nodes"]:
-            group = node.get("group", "default")
-            color = node_colors.get(group, node_color)
-            dot.node(node["id"], node["label"], fillcolor=color)
-    if "edges" in graph_data:
-        for edge in graph_data["edges"]:
-            dot.edge(edge["source"], edge["target"], edge.get("label"))
+    for node in graph.nodes:
+        color = node_colors.get(node.group, node_color)
+        dot.node(node.id, node.label, fillcolor=color)
+
+    for edge in graph.edges:
+        dot.edge(edge.source, edge.target, edge.label)
     return dot
 
 def render_graph_export(graph_data, node_shape, node_color, font, layout_algorithm, output_format):
